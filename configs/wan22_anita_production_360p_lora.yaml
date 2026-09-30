@@ -1,0 +1,40 @@
+pretrained_model_name_or_path: /data/shasegawa/t2a/models/Wan2.2-I2V-A14B-Diffusers
+output_dir: /data/shasegawa/t2a/outputs/wan22-anita-production-lora
+
+tasks: line_art,character_color,compose_refine
+height: 360
+width: 640
+num_frames: 49
+fps: 12
+
+train_batch_size: 1
+gradient_accumulation_steps: 8
+max_train_steps: 5000
+checkpointing_steps: 500
+
+learning_rate: 0.0001
+adam_weight_decay: 0.0001
+lr_scheduler: cosine
+lr_warmup_steps: 100
+max_grad_norm: 1.0
+
+rank: 16
+lora_alpha: 16
+lora_dropout: 0.0
+# Attention projections plus FFN projections for temporal dynamics in Wan's 3D blocks.
+target_modules: to_q,to_k,to_v,to_out.0,ffn.net.0.proj,ffn.net.2
+train_stage: high
+
+# Stage 2/3 primarily use the previous-stage shot as the Wan latent condition.
+# Stage 1 can fall back to first-frame or reference-image conditioning.
+first_frame_prob: 0.5
+reference_prob: 0.5
+condition_dropout_prob: 0.05
+text_drop_prob: 0.05
+
+mixed_precision: bf16
+seed: 1337
+dataloader_num_workers: 4
+gradient_checkpointing: true
+enable_vae_tiling: true
+max_sequence_length: 512

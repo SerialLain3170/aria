@@ -1,0 +1,22 @@
+[console_scripts]
+t2a-animeshooter-manifest = text_to_anime.animeshooter:main
+t2a-anita = text_to_anime.anita:main
+t2a-anita-bg-plates = text_to_anime.anita_bg_plates:main
+t2a-anita-production = text_to_anime.anita_production:main
+t2a-batch-infer-wan-i2v = text_to_anime.batch_infer_wan_i2v:main
+t2a-build-manifest = text_to_anime.manifest:main
+t2a-build-subset = text_to_anime.subset:main
+t2a-caption-anita-shots = text_to_anime.caption_anita:main
+t2a-export-source-ids = text_to_anime.source_ids:main
+t2a-extract-clips = text_to_anime.extract_clips:main
+t2a-extract-frames = text_to_anime.frames:main
+t2a-infer-wan = text_to_anime.infer_wan:main
+t2a-infer-wan-i2v = text_to_anime.infer_wan_i2v:main
+t2a-render-wan-vace-anita = text_to_anime.render_wan_vace_anita:main
+t2a-render-wan22-anita-production = text_to_anime.render_wan22_anita_production:main
+t2a-sakuga-manifest = text_to_anime.sakuga:main
+t2a-train-anita-production = text_to_anime.anita_production:train_main
+t2a-train-wan-i2v-lora = text_to_anime.train_wan_i2v_lora:main
+t2a-train-wan-lora = text_to_anime.train_wan_lora:main
+t2a-train-wan-vace-anita = text_to_anime.train_wan_vace_anita:main
+t2a-train-wan22-anita-production = text_to_anime.train_wan22_anita_production_lora:main

@@ -1,0 +1,47 @@
+# Overfit sanity check: can the high-noise expert learn the three production tasks on 3 training shots?
+# Train high and low in parallel (one GPU each), then render the same shots with
+# t2a-render-wan22-anita-production using both LoRAs. If character_color still returns
+# the line art unchanged, the full-frame mask=1 source conditioning is the problem, not data size.
+pretrained_model_name_or_path: /data/shasegawa/t2a/models/Wan2.2-I2V-A14B-Diffusers
+output_dir: /data/shasegawa/t2a/outputs/wan22-anita-production-overfit3-288x512-high
+
+data: /data/shasegawa/t2a/manifests/anita_production_captioned.jsonl
+tasks: line_art,character_color,compose_refine
+# One sub-shot each from three different works; all have >=33 frames for every task.
+include_scenes: 119_a_part000,221_a_part000,204_a_part000
+height: 288
+width: 512
+num_frames: 33
+fps: 8
+
+train_batch_size: 1
+gradient_accumulation_steps: 3
+# 300 steps x 3 samples = 900 samples, about 100 passes over the 9 records.
+max_train_steps: 300
+checkpointing_steps: 100
+
+learning_rate: 0.0001
+adam_weight_decay: 0.0
+lr_scheduler: constant_with_warmup
+lr_warmup_steps: 20
+max_grad_norm: 1.0
+
+rank: 32
+lora_alpha: 32
+lora_dropout: 0.0
+target_modules: to_q,to_k,to_v,to_out.0,ffn.net.0.proj,ffn.net.2
+train_stage: high
+
+# Deterministic conditioning: line_art always from the first frame, stages 2/3 always from the source shot.
+first_frame_prob: 1.0
+reference_prob: 0.0
+condition_dropout_prob: 0.0
+text_drop_prob: 0.0
+task_sampling: balanced
+
+mixed_precision: bf16
+seed: 1337
+dataloader_num_workers: 2
+gradient_checkpointing: true
+enable_vae_tiling: true
+max_sequence_length: 512

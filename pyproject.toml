@@ -1,0 +1,69 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "text-to-anime"
+version = "0.1.0"
+description = "LoRA training and inference utilities for anime text-to-video adaptation on Wan/AniSora-style backbones."
+requires-python = ">=3.10"
+dependencies = [
+  "accelerate>=1.1.0",
+  "diffusers>=0.35.0",
+  "einops>=0.8.0",
+  "ftfy>=6.2.0",
+  "gdown>=6.1.0",
+  "huggingface-hub>=0.27.0",
+  "numpy>=1.24",
+  "openai>=1.60.0",
+  "peft>=0.13.0",
+  "pillow>=10.0",
+  "pyarrow>=15.0.0",
+  "safetensors>=0.4.5",
+  "torch>=2.4.0",
+  "torchvision>=0.19.0",
+  "tqdm>=4.66",
+  "transformers>=4.45.0",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+video = [
+  "av>=12.0.0",
+  "decord>=0.6.0",
+]
+dev = [
+  "pytest>=8.0.0",
+  "ruff>=0.6.0",
+]
+
+[project.scripts]
+t2a-build-manifest = "text_to_anime.manifest:main"
+t2a-sakuga-manifest = "text_to_anime.sakuga:main"
+t2a-animeshooter-manifest = "text_to_anime.animeshooter:main"
+t2a-anita = "text_to_anime.anita:main"
+t2a-anita-production = "text_to_anime.anita_production:main"
+t2a-caption-anita-shots = "text_to_anime.caption_anita:main"
+t2a-train-anita-production = "text_to_anime.anita_production:train_main"
+t2a-extract-clips = "text_to_anime.extract_clips:main"
+t2a-build-subset = "text_to_anime.subset:main"
+t2a-train-wan-lora = "text_to_anime.train_wan_lora:main"
+t2a-train-wan-i2v-lora = "text_to_anime.train_wan_i2v_lora:main"
+t2a-train-wan22-anita-production = "text_to_anime.train_wan22_anita_production_lora:main"
+t2a-render-wan22-anita-production = "text_to_anime.render_wan22_anita_production:main"
+t2a-anita-bg-plates = "text_to_anime.anita_bg_plates:main"
+t2a-train-wan-vace-anita = "text_to_anime.train_wan_vace_anita:main"
+t2a-render-wan-vace-anita = "text_to_anime.render_wan_vace_anita:main"
+t2a-infer-wan = "text_to_anime.infer_wan:main"
+t2a-infer-wan-i2v = "text_to_anime.infer_wan_i2v:main"
+t2a-batch-infer-wan-i2v = "text_to_anime.batch_infer_wan_i2v:main"
+t2a-extract-frames = "text_to_anime.frames:main"
+t2a-export-source-ids = "text_to_anime.source_ids:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+

@@ -1,0 +1,38 @@
+root: /data/shasegawa/t2a
+
+models:
+  wan22_i2v_diffusers: /data/shasegawa/t2a/models/Wan2.2-I2V-A14B-Diffusers
+  anisora_v32_native: /data/shasegawa/t2a/models/Index-anisora/V3.2
+  anisora_v32_diffusers: /data/shasegawa/t2a/models/Index-anisora-diffusers/V3.2
+  hf_cache: /data/shasegawa/t2a/hf-cache
+
+datasets:
+  first_frames: /data/shasegawa/t2a/datasets/conditioning_frames
+  anita_raw: /data/shasegawa/t2a/datasets/anita/raw
+  anita_extracted: /data/shasegawa/t2a/datasets/anita
+  anita_clips: /data/shasegawa/t2a/datasets/anita/clips
+  animeshooter_raw: /data/shasegawa/t2a/datasets/animeshooter/raw
+  animeshooter_annotations: /data/shasegawa/t2a/datasets/animeshooter/raw/dataset_anime_shooter.zip
+  animeshooter_source_videos: /data/shasegawa/t2a/datasets/animeshooter/source_videos
+  animeshooter_clips: /data/shasegawa/t2a/datasets/animeshooter/clips
+  sakuga_aesthetic_parquet: /data/shasegawa/t2a/datasets/sakuga-42m/aesthetic/parquet
+  sakuga_aesthetic_clips: /data/shasegawa/t2a/datasets/sakuga-42m/aesthetic/clips
+
+manifests:
+  anita_i2v_train: /data/shasegawa/t2a/manifests/anita_i2v_train.jsonl
+  anita_i2v_val50: /data/shasegawa/t2a/manifests/anita_i2v_val50.jsonl
+  animeshooter_i2v: /data/shasegawa/t2a/manifests/animeshooter_i2v.jsonl
+  anita_raw: /data/shasegawa/t2a/manifests/anita_raw.jsonl
+  anita_clipped: /data/shasegawa/t2a/manifests/anita_clipped.jsonl
+  animeshooter_raw: /data/shasegawa/t2a/manifests/animeshooter_raw.jsonl
+  animeshooter_clipped: /data/shasegawa/t2a/manifests/animeshooter_clipped.jsonl
+  animeshooter_subset_30k: /data/shasegawa/t2a/manifests/animeshooter_vn_motion_30k.jsonl
+  sakuga_aesthetic_raw: /data/shasegawa/t2a/manifests/sakuga_aesthetic_raw.jsonl
+  sakuga_aesthetic_normalized: /data/shasegawa/t2a/manifests/sakuga_aesthetic_normalized.jsonl
+  vn_subset_30k: /data/shasegawa/t2a/manifests/vn_motion_30k.jsonl
+  train: /data/shasegawa/t2a/manifests/train.jsonl
+  val: /data/shasegawa/t2a/manifests/val.jsonl
+
+outputs:
+  lora: /data/shasegawa/t2a/outputs/anisora-v32-animeshooter-vn-lora
+  samples: /data/shasegawa/t2a/outputs/samples

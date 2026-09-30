@@ -1,0 +1,35 @@
+pretrained_model_name_or_path: Wan-AI/Wan2.2-T2V-14B-Diffusers
+output_dir: /data/shasegawa/t2a/outputs/sakuga-vn-lora
+
+height: 360
+width: 640
+num_frames: 49
+fps: 12
+
+train_batch_size: 1
+gradient_accumulation_steps: 8
+max_train_steps: 10000
+checkpointing_steps: 500
+validation_steps: 500
+
+learning_rate: 0.0001
+adam_weight_decay: 0.0001
+lr_scheduler: cosine
+lr_warmup_steps: 250
+max_grad_norm: 1.0
+
+rank: 16
+lora_alpha: 16
+lora_dropout: 0.0
+target_modules: to_q,to_k,to_v,to_out.0
+train_stage: high
+
+mixed_precision: bf16
+seed: 1337
+dataloader_num_workers: 4
+gradient_checkpointing: true
+enable_vae_tiling: true
+max_sequence_length: 512
+
+negative_prompt: "subtitles, captions, text, watermark, logo, credits, low quality, jpeg artifacts, blurry, distorted hands, malformed face, duplicate character, flicker"
+

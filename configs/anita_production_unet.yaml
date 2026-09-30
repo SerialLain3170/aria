@@ -1,0 +1,36 @@
+# All-in-one supervised Anita production-stage shot model.
+# One task-conditioned 3D U-Net trains these sequence-to-sequence tasks:
+# - line_art: optional first/reference image -> line-art shot
+# - character_color: line-art shot + optional colored character reference -> color shot
+# - compose_refine: character-color shot + optional composition reference -> final composition shot
+data: /data/shasegawa/t2a/datasets/anita
+output_dir: /data/shasegawa/t2a/outputs/anita-production-unet3d
+tasks: line_art,character_color,compose_refine
+num_frames: 12
+height: 384
+width: 384
+base_channels: 48
+channel_mults: 1,2,4
+cond_dim: 256
+vocab_size: 8192
+max_tokens: 64
+train_batch_size: 1
+dataloader_num_workers: 4
+max_train_steps: 20000
+learning_rate: 0.0001
+adam_beta1: 0.9
+adam_beta2: 0.999
+adam_weight_decay: 0.0001
+foreground_weight: 2.0
+sketch_edge_weight: 0.05
+temporal_weight: 0.1
+first_frame_prob: 0.5
+reference_prob: 0.5
+text_drop_prob: 0.1
+validation_ratio: 0.02
+checkpointing_steps: 1000
+validation_steps: 500
+mixed_precision: bf16
+random_clip: true
+random_crop: true
+seed: 1337

@@ -1,0 +1,58 @@
+# Wan2.1 VACE 1.3B LoRA on AnitaDataset production stages (in-betweening, colorization, compositing).
+# Fast iteration model: settle the task design here, then move the same config to VACE 14B.
+# Prerequisites:
+#   scripts/download_wan21_vace.sh 1.3B
+#   t2a-anita-bg-plates            # background plates for compose_refine
+pretrained_model_name_or_path: /data/shasegawa/t2a/models/Wan2.1-VACE-1.3B-diffusers
+anita_root: /data/shasegawa/t2a/datasets/anita
+captions: /data/shasegawa/t2a/manifests/anita_production_captioned.jsonl
+plates_index: /data/shasegawa/t2a/manifests/anita_background_plates.jsonl
+output_dir: /data/shasegawa/t2a/outputs/wan21-vace-1.3b-anita-480p-r1
+
+tasks: inbetween,character_color,compose_refine
+task_weights: inbetween=1,character_color=1,compose_refine=1
+height: 480
+width: 832
+# Clips follow the timing sheet (held drawings expanded at 24 fps) sampled every 2nd frame = 12 fps.
+# Shorter shots use the longest valid Wan length (4k+1) down to min_frames instead of stretching.
+max_frames: 33
+min_frames: 17
+timeline_stride: 2
+keyframe_stride: 8
+compose_plate_reference: true
+
+# Whole shots are held out; all tasks of a validation shot are excluded from training.
+# 213_a has a moving background, 221_a a static one.
+val_scenes: hero/213_a,dance/221_a
+val_ratio: 0.1
+max_validation_samples: 12
+validation_steps: 250
+
+hflip_prob: 0.5
+text_drop_prob: 0.0
+loss_floor: 0.2
+change_threshold: 0.08
+
+train_batch_size: 1
+# Sized for 3 GPUs (accelerate --num_processes 3): effective batch 6, ~26 s per micro-step -> ~18 h.
+gradient_accumulation_steps: 2
+max_train_steps: 1500
+checkpointing_steps: 500
+learning_rate: 0.0001
+adam_weight_decay: 0.0001
+lr_scheduler: cosine
+lr_warmup_steps: 100
+max_grad_norm: 1.0
+
+rank: 32
+lora_alpha: 32
+lora_dropout: 0.0
+target_modules: to_q,to_k,to_v,to_out.0,ffn.net.0.proj,ffn.net.2
+
+mixed_precision: bf16
+seed: 1337
+dataloader_num_workers: 4
+gradient_checkpointing: true
+enable_vae_tiling: false
+vae_dtype: bfloat16
+max_sequence_length: 512

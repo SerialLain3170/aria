@@ -1,0 +1,15 @@
+pretrained_model_name_or_path: /data/shasegawa/t2a/models/Wan2.2-I2V-A14B-Diffusers
+lora_path: /data/shasegawa/t2a/outputs/anisora-v32-animeshooter-vn-lora
+
+height: 360
+width: 640
+num_frames: 49
+fps: 12
+num_inference_steps: 8
+guidance_scale: 5.0
+flow_shift: 5.0
+seed: 4096
+dtype: bf16
+cpu_offload: false
+
+negative_prompt: "subtitles, captions, text, watermark, logo, credits, low quality, jpeg artifacts, blurry, distorted hands, malformed face, duplicate character, flicker"
