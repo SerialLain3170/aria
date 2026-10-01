@@ -10,6 +10,8 @@ part of this repository.
   and artifact boundaries.
 - [Training methodology](training-methodology.md) — dataset construction, conditioning,
   flow-matching objectives, LoRA strategy, validation, and experiment protocol.
+- [Future direction](future-direction.md) — product north star, research roadmap,
+  engineering milestones, evaluation gates, and the recommended next experiment.
 - [Takeover guide](takeover/README.md) — what a new maintainer needs to know first,
   current limitations, risks, and suggested priorities.
 - [Operations runbook](takeover/runbook.md) — environment setup, preflight checks, data

@@ -312,6 +312,7 @@ final video can hide a failed intermediate transformation.
 
 - [Detailed architecture](docs/architecture.md)
 - [Training methodology](docs/training-methodology.md)
+- [Future direction](docs/future-direction.md)
 - [Takeover guide](docs/takeover/README.md)
 - [Operations runbook](docs/takeover/runbook.md)
 - [Current-state inventory](docs/takeover/current-state.md)
