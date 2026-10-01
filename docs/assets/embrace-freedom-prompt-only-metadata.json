@@ -1,0 +1,49 @@
+{
+  "base_model": "/data/shasegawa/t2a/models/Wan2.1-VACE-1.3B-diffusers",
+  "lora": "/data/shasegawa/t2a/outputs/wan21-vace-1.3b-anita-480p-r1",
+  "device": "cuda:2",
+  "steps": 30,
+  "guidance_scale": 5.0,
+  "negative_prompt": "subtitles, captions, text, watermark, logo, credits, low quality, jpeg artifacts, blurry, distorted hands, malformed face, duplicate character, flicker",
+  "conditioning": "full-mask chained video; no reference image",
+  "scenes": {
+    "embrace_freedom/128_a": {
+      "stage1": "/data/shasegawa/t2a/outputs/renders/vace-r1-final-val/embrace_freedom__128_a/inbetween_generated.mp4",
+      "stage2": "docs/assets/embrace-freedom-128-stage2-prompt-only.mp4",
+      "stage3": "docs/assets/embrace-freedom-128-stage3-prompt-only.mp4",
+      "stage2_seed": 20261001,
+      "stage3_seed": 20261002,
+      "stage2_prompt": "Flat anime production colors on the character. Preserve every line and all facial motion. A startled young anime woman with luminous golden-blonde hair, pale skin, vivid teal-blue eyes, and a white-and-blue collar. Clean precise cel shading on a plain white background.",
+      "stage3_prompt": "Final composited anime close-up. Preserve the startled young woman and her subtle facial motion. Golden-blonde hair, vivid teal-blue eyes, warm sunrise rim light, soft cinematic blue-and-gold background glow, polished cel shading, dramatic high-quality anime finish.",
+      "metrics": {
+        "stage1_saturation": 0.044918641448020935,
+        "stage2_saturation": 0.1740138828754425,
+        "stage3_saturation": 0.20623350143432617,
+        "stage1_motion": 0.021864933893084526,
+        "stage2_motion": 0.014637199230492115,
+        "stage3_motion": 0.02091022953391075,
+        "psnr_stage2_vs_stage1": 16.92666796605319,
+        "psnr_stage3_vs_stage2": 23.790009099455354
+      }
+    },
+    "embrace_freedom/168_a": {
+      "stage1": "/data/shasegawa/t2a/outputs/renders/vace-r1-final-val/embrace_freedom__168_a/inbetween_generated.mp4",
+      "stage2": "docs/assets/embrace-freedom-168-stage2-prompt-only.mp4",
+      "stage3": "docs/assets/embrace-freedom-168-stage3-prompt-only.mp4",
+      "stage2_seed": 20261101,
+      "stage3_seed": 20261102,
+      "stage2_prompt": "Flat anime production colors on the character. Preserve every line and the crouching motion. A blue-haired anime woman in a crisp white outfit with navy accents, pale skin, and cool blue shadows. Clean precise cel shading on a plain white background.",
+      "stage3_prompt": "Final composited anime action shot. Preserve the blue-haired woman crouching and leaning forward. Wind-swept cobalt hair, white outfit with navy accents, luminous mint-green environment, speed lines, cool dramatic lighting, polished cinematic anime finish.",
+      "metrics": {
+        "stage1_saturation": 0.012214791029691696,
+        "stage2_saturation": 0.04515930637717247,
+        "stage3_saturation": 0.7421566843986511,
+        "stage1_motion": 0.04017449915409088,
+        "stage2_motion": 0.029533307999372482,
+        "stage3_motion": 0.04035017266869545,
+        "psnr_stage2_vs_stage1": 21.30975045422939,
+        "psnr_stage3_vs_stage2": 5.8112165649160605
+      }
+    }
+  }
+}

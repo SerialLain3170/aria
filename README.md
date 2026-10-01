@@ -8,6 +8,50 @@ The intended first milestone is narrow:
 one character, one background, one continuous action, one camera instruction, 3-5 seconds
 ```
 
+## Trained model demo
+
+[![Hero, Dance, and 128_a anime production showcase](docs/assets/readme-showcase-hero-dance-128a.gif)](docs/assets/readme-showcase-hero-dance-128a.mp4)
+
+**[Play the Hero, Dance, and 128_a showcase](docs/assets/readme-showcase-hero-dance-128a.mp4)** —
+three synchronized Stage 1/2/3 comparisons in one 7.75-second reel. Hero and Dance use
+held-out reference-conditioned results; `embrace_freedom/128_a` uses the labeled
+prompt-only Stage 2/3 experiment.
+
+Demo provenance: `wan21-vace-1.3b-anita-480p-r1` at step 1500, 30 inference steps, and
+CFG 5.0. The source renders are 832×480 at 12 fps. Every panel is a model-generated output;
+only labels, fades, scaling, and layout were added for the README reels.
+
+### Dance three-stage showcase
+
+[![dance/221_a synchronized in-betweening, character color, and final composite](docs/assets/dance-221-three-stage-showcase.gif)](docs/assets/dance-221-three-stage-showcase.mp4)
+
+**[Play the dance/221_a comparison](docs/assets/dance-221-three-stage-showcase.mp4)** —
+a held-out, reference-conditioned example with genuine records for in-betweening,
+character color, and final compositing.
+
+### Additional Stage 1 showcase
+
+[![Embrace Freedom 128_a and 168_a synchronized in-betweening outputs](docs/assets/embrace-freedom-inbetween-showcase.gif)](docs/assets/embrace-freedom-inbetween-showcase.mp4)
+
+**[Play the Embrace Freedom comparison](docs/assets/embrace-freedom-inbetween-showcase.mp4)** —
+held-out `embrace_freedom/128_a` and `embrace_freedom/168_a` Stage 1 in-betweening
+outputs shown side-by-side. These scenes do not have paired Stage 2 or Stage 3 records in
+the current validation split.
+
+#### Experimental prompt-only Stage 2/3
+
+The missing stages can be extrapolated without color or background references by using
+Stage 1 as a full-mask Stage 2 control, then chaining Stage 2 into Stage 3. This is an
+out-of-distribution test, not paired validation data.
+
+[![Prompt-only Stage 2 and Stage 3 for embrace_freedom/128_a](docs/assets/embrace-freedom-128-prompt-only-stages.gif)](docs/assets/embrace-freedom-128-prompt-only-stages.mp4)
+
+[![Prompt-only Stage 2 and Stage 3 for embrace_freedom/168_a](docs/assets/embrace-freedom-168-prompt-only-stages.gif)](docs/assets/embrace-freedom-168-prompt-only-stages.mp4)
+
+The prompts produce the requested colors, but the lack of references is visible: `128_a`
+becomes overexposed in Stage 3, while `168_a` develops an aggressively saturated mint
+background. See the [generation metadata and metrics](docs/assets/embrace-freedom-prompt-only-metadata.json).
+
 ## What is included
 
 - JSONL manifest tooling for filtered AnimeShooter/Sakuga-style clips.
