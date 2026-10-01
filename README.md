@@ -1,182 +1,158 @@
-# Text-to-Anime
+# Pipeline-Aware Anime Text-to-Video
 
-This repo contains practical training and inference code for anime text-to-video domain adaptation. It is built around a Diffusers-compatible Wan/AniSora-style backbone and trains LoRA adapters rather than attempting full text-to-video pretraining.
+This project generates short anime shots by following the structure of an animation
+production pipeline instead of asking one model to produce the final video in a single
+step.
 
-The intended first milestone is narrow:
+A text prompt guides all three phases. Visual controls carry timing, identity, and scene
+continuity from one phase to the next:
 
 ```text
-one character, one background, one continuous action, one camera instruction, 3-5 seconds
+prompt + key drawings
+        |
+        v
+1. motion and line art
+        |
+        v
+2. character color
+        |
+        v
+3. final composition
 ```
 
-## Trained model demo
+The current implementation fine-tunes a Diffusers-compatible Wan VACE checkpoint with
+LoRA on AnitaDataset production stages. VACE is a natural fit because it already accepts a
+control video, a generation mask, optional reference images, and text.
 
-[![Hero, Dance, and 128_a anime production showcase](docs/assets/readme-showcase-hero-dance-128a.gif)](docs/assets/readme-showcase-hero-dance-128a.mp4)
+## Three-phase showcase
 
-**[Play the Hero, Dance, and 128_a showcase](docs/assets/readme-showcase-hero-dance-128a.mp4)** —
-three synchronized Stage 1/2/3 comparisons in one 7.75-second reel. Hero and Dance use
-held-out reference-conditioned results; `embrace_freedom/128_a` uses the labeled
-prompt-only Stage 2/3 experiment.
+[![Hero, Dance, and 128_a three-phase anime production showcase](docs/assets/readme-showcase-hero-dance-128a.gif)](docs/assets/readme-showcase-hero-dance-128a.mp4)
 
-Demo provenance: `wan21-vace-1.3b-anita-480p-r1` at step 1500, 30 inference steps, and
-CFG 5.0. The source renders are 832×480 at 12 fps. Every panel is a model-generated output;
-only labels, fades, scaling, and layout were added for the README reels.
+**[Play the 7.75-second MP4](docs/assets/readme-showcase-hero-dance-128a.mp4)**
 
-### Dance three-stage showcase
+Each scene is shown as synchronized Phase 1, 2, and 3 output. `hero/213_a` and
+`dance/221_a` are held-out, reference-conditioned examples. `embrace_freedom/128_a`
+demonstrates the more difficult prompt-only extrapolation for phases 2 and 3, because that
+shot has no paired color or composition records.
 
-[![dance/221_a synchronized in-betweening, character color, and final composite](docs/assets/dance-221-three-stage-showcase.gif)](docs/assets/dance-221-three-stage-showcase.mp4)
+The showcase uses `wan21-vace-1.3b-anita-480p-r1` at step 1500 with 30 inference steps and
+CFG 5.0. Source renders are 832x480 at 12 fps. Labels, scaling, fades, and layout are the
+only post-processing.
 
-**[Play the dance/221_a comparison](docs/assets/dance-221-three-stage-showcase.mp4)** —
-a held-out, reference-conditioned example with genuine records for in-betweening,
-character color, and final compositing.
+## Why pipeline-aware generation?
 
-### Additional Stage 1 showcase
+Single-pass generation must solve motion, drawing consistency, character color,
+background design, lighting, and compositing simultaneously. Breaking the task into
+production-aware phases gives each transformation a clearer contract:
 
-[![Embrace Freedom 128_a and 168_a synchronized in-betweening outputs](docs/assets/embrace-freedom-inbetween-showcase.gif)](docs/assets/embrace-freedom-inbetween-showcase.mp4)
+- timing and motion can be reviewed before color or rendering;
+- character identity and palette can be stabilized with a reference drawing;
+- backgrounds and lighting can change without asking the model to rediscover the motion;
+- failures are attributable to a phase instead of being hidden in one final sample;
+- artists can replace, edit, or approve intermediate videos.
 
-**[Play the Embrace Freedom comparison](docs/assets/embrace-freedom-inbetween-showcase.mp4)** —
-held-out `embrace_freedom/128_a` and `embrace_freedom/168_a` Stage 1 in-betweening
-outputs shown side-by-side. These scenes do not have paired Stage 2 or Stage 3 records in
-the current validation split.
+Text remains important, but it works with the intermediate representation rather than
+being the only source of control.
 
-#### Experimental prompt-only Stage 2/3
+## Phase 1 - Motion and line art
 
-The missing stages can be extrapolated without color or background references by using
-Stage 1 as a full-mask Stage 2 control, then chaining Stage 2 into Stage 3. This is an
-out-of-distribution test, not paired validation data.
+Phase 1 turns sparse line-art keys into a complete line-art shot.
 
-[![Prompt-only Stage 2 and Stage 3 for embrace_freedom/128_a](docs/assets/embrace-freedom-128-prompt-only-stages.gif)](docs/assets/embrace-freedom-128-prompt-only-stages.mp4)
+| Input | Behavior |
+|---|---|
+| Text prompt | Describes subject, action, framing, and intended motion. |
+| Control video | Contains line-art key drawings at selected frames and neutral gray elsewhere. |
+| VACE mask | `0` on supplied keys and `1` on frames to generate. |
+| Output | A continuous clean line-art sequence. |
 
-[![Prompt-only Stage 2 and Stage 3 for embrace_freedom/168_a](docs/assets/embrace-freedom-168-prompt-only-stages.gif)](docs/assets/embrace-freedom-168-prompt-only-stages.mp4)
+Anita frame numbers are interpreted as timing-sheet positions on a 24 fps timeline. Missing
+numbers become held drawings instead of being discarded. The default training setup samples
+every second timeline frame, producing 12 fps while preserving anime exposure timing.
 
-The prompts produce the requested colors, but the lack of references is visible: `128_a`
-becomes overexposed in Stage 3, while `168_a` develops an aggressively saturated mint
-background. See the [generation metadata and metrics](docs/assets/embrace-freedom-prompt-only-metadata.json).
+The current checkpoint is strongest at in-betweening supplied keys. Fully prompt-only line
+art generation is a future extension, not the primary trained contract.
 
-## What is included
+## Phase 2 - Character color
 
-- JSONL manifest tooling for filtered AnimeShooter/Sakuga-style clips.
-- A structured caption helper for later motion-aware captions. The initial run uses AnimeShooter's existing narrative/descriptive captions.
-- Video loading that samples fixed-length clips while preserving encoded held frames.
-- Wan text-to-video LoRA training with Accelerate.
-- Wan text-to-video inference with optional LoRA loading.
-- Concrete AniSora V3.2/AnimeShooter path configs and a starter 360p two-L40S config.
+Phase 2 colors the animated character while preserving Phase 1 motion and line work.
 
+| Input | Behavior |
+|---|---|
+| Text prompt | Describes palette, clothing, hair, skin, and color treatment. |
+| Control video | The complete Phase 1 line-art shot. |
+| VACE mask | `1` across the shot so the model transforms the control. |
+| Color reference | Normally a colored drawing from outside the sampled window. |
+| Output | A character-colored animation layer, usually on a plain background. |
 
-## First Run: AniSora V3.2 + AnimeShooter
+The reference image is the main identity and palette anchor. Prompt-only colorization is
+possible as an extrapolation, but it is less stable and can drift in shading or saturation.
 
-Prepare the large-file layout under `/data/shasegawa/t2a`:
+## Phase 3 - Final composition
 
-```bash
-scripts/prepare_first_run.sh
+Phase 3 integrates the colored character into the scene and applies the final visual
+treatment.
+
+| Input | Behavior |
+|---|---|
+| Text prompt | Describes setting, lighting, mood, effects, and finished appearance. |
+| Control video | The Phase 2 character layer placed over a recovered background. |
+| VACE mask | `1` across the shot for full compositing/refinement. |
+| Scene reference | A clean background plate for static shots when available. |
+| Output | The final composited anime shot. |
+
+Background plates are recovered from Anita's transparent character-color layers and final
+compositions. Static shots use a temporal median plate; moving shots use per-frame
+backgrounds with character holes filled by multiscale interpolation.
+
+Without a background reference, the phase can still follow a scene prompt, but composition
+and color intensity become less predictable. The prompt-only `128_a` panel in the showcase
+is intentionally retained as an example of that limitation.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    P[Text prompt] --> S1[Phase 1: motion + line art]
+    K[Sparse key drawings] --> S1
+    S1 --> L[Line-art video]
+    P --> S2[Phase 2: character color]
+    L --> S2
+    R[Color reference] --> S2
+    S2 --> C[Colored character video]
+    P --> S3[Phase 3: final composition]
+    C --> S3
+    B[Background / plate reference] --> S3
+    S3 --> F[Final anime video]
 ```
 
-Download AniSora V3.2 native weights to `/data/shasegawa/t2a/models/Index-anisora/V3.2`:
+All three phases share one VACE LoRA. Task-specific prompts and conditioning layouts tell
+the model which transformation to perform. Training uses the pipeline's own
+`prepare_video_latents` and `prepare_masks` methods so training and stock
+`WanVACEPipeline` inference see the same representation.
 
-```bash
-export HF_HOME=/data/shasegawa/t2a/hf-cache
-scripts/download_anisora_v32.sh
+## Data contract
+
+The expected Anita layout is:
+
+```text
+anita/
+└── work/
+    ├── sketch/scene/*.png
+    ├── color/scene/*.png
+    └── composition/scene/*.png
 ```
 
-Download AnimeShooter metadata/files to `/data/shasegawa/t2a/datasets/animeshooter/raw`:
+Frames are aligned by filename stem. The available intersections determine which phases a
+shot can supervise:
 
-```bash
-export HF_HOME=/data/shasegawa/t2a/hf-cache
-scripts/download_animeshooter.sh
-```
+- sketch frames train Phase 1;
+- matching sketch + color frames train Phase 2;
+- matching color + composition frames train Phase 3.
 
-Convert AnimeShooter shot annotations to the trainer manifest, using AnimeShooter's own narrative/descriptive captions:
+Whole shots - not individual task records - are assigned to training or validation. This
+keeps the same motion from leaking between splits.
 
-```bash
-t2a-animeshooter-manifest \
-  --annotations /data/shasegawa/t2a/datasets/animeshooter/raw/dataset_anime_shooter.zip \
-  --videos-root /data/shasegawa/t2a/datasets/animeshooter/source_videos \
-  --clips-root /data/shasegawa/t2a/datasets/animeshooter/clips \
-  --output /data/shasegawa/t2a/manifests/animeshooter_raw.jsonl
-```
-
-If `video_ids.txt` is present and `yt-dlp` is installed, download source videos and extract shot clips:
-
-```bash
-scripts/download_animeshooter_sources.sh
-
-t2a-extract-clips \
-  --manifest /data/shasegawa/t2a/manifests/animeshooter_raw.jsonl \
-  --output-manifest /data/shasegawa/t2a/manifests/animeshooter_clipped.jsonl
-```
-
-Build the initial high-quality VN-weighted subset without recaptioning:
-
-```bash
-t2a-build-subset \
-  --manifest /data/shasegawa/t2a/manifests/animeshooter_clipped.jsonl \
-  --output /data/shasegawa/t2a/manifests/animeshooter_vn_motion_30k.jsonl \
-  --target-size 30000
-
-t2a-build-manifest split \
-  --manifest /data/shasegawa/t2a/manifests/animeshooter_vn_motion_30k.jsonl \
-  --train-out /data/shasegawa/t2a/manifests/train.jsonl \
-  --val-out /data/shasegawa/t2a/manifests/val.jsonl \
-  --val-ratio 0.02
-```
-
-Training uses `configs/anisora_v32_animeshooter_360p_lora.yaml`. That config points to `/data/shasegawa/t2a/models/Index-anisora-diffusers/V3.2`, meaning AniSora V3.2 must be available as a `WanPipeline`-compatible Diffusers folder for this trainer. Keep the native checkpoint at `/data/shasegawa/t2a/models/Index-anisora/V3.2` for upstream AniSora inference and conversion work.
-
-
-## Optional: AnitaDataset
-
-AnitaDataset is useful as a licensed auxiliary animation-style source, not as the main captioned T2V dataset. It provides 1080p image sequences for sketch, color, and composition folders, but no captions or semantic annotations.
-
-Download the official Google Drive archive:
-
-```bash
-scripts/download_anita.sh
-unzip -q /data/shasegawa/t2a/datasets/anita/raw/Anita_Dataset.zip -d /data/shasegawa/t2a/datasets/anita
-```
-
-Build or render an auxiliary manifest from the extracted image sequences:
-
-```bash
-t2a-anita manifest \
-  --root /data/shasegawa/t2a/datasets/anita \
-  --clips-root /data/shasegawa/t2a/datasets/anita/clips \
-  --output /data/shasegawa/t2a/manifests/anita_raw.jsonl
-
-t2a-anita render-clips \
-  --root /data/shasegawa/t2a/datasets/anita \
-  --clips-root /data/shasegawa/t2a/datasets/anita/clips \
-  --output-manifest /data/shasegawa/t2a/manifests/anita_clipped.jsonl
-```
-
-Use Anita at low weight for style/intermediate-animation regularization. Keep AnimeShooter as the primary captioned video dataset.
-
-## Dataset manifest
-
-Training expects JSONL records:
-
-```json
-{
-  "video_path": "/data/shasegawa/t2a/datasets/animeshooter/clips/video_id/seg000_shot000.mp4",
-  "caption": "In an empty classroom at sunset, a nervous schoolgirl lowers her eyes and quietly speaks as the camera slowly moves closer.",
-  "source_id": "show_or_source_video_id",
-  "content_type": "talking_facial_acting",
-  "motion_amplitude": 2
-}
-```
-
-You can also provide structured fields instead of `caption`; `text_to_anime.captioning.build_caption()` will assemble a caption from fields such as `subject`, `appearance`, `initial_state`, `action`, `secondary_motion`, `camera`, `background`, and `style`.
-
-Validate and split by source:
-
-```bash
-t2a-build-manifest validate --manifest /data/shasegawa/t2a/manifests/animeshooter_clipped.jsonl
-t2a-build-manifest split \
-  --manifest /data/shasegawa/t2a/manifests/animeshooter_vn_motion_30k.jsonl \
-  --train-out /data/shasegawa/t2a/manifests/train.jsonl \
-  --val-out /data/shasegawa/t2a/manifests/val.jsonl \
-  --val-ratio 0.02
-```
-
-## Install
+## Installation
 
 ```bash
 python -m venv .venv
@@ -186,64 +162,30 @@ export HF_HOME=/data/shasegawa/t2a/hf-cache
 accelerate config
 ```
 
-For two L40S GPUs, use bf16 in `accelerate config`.
+The pipeline also requires CUDA, `ffmpeg`, and enough storage for the base checkpoint,
+AnitaDataset, background plates, LoRA checkpoints, and renders.
 
-## Train
-
-Start with the small 10K experiment before scaling:
-
-```bash
-accelerate launch --num_processes 2 -m text_to_anime.train_wan_lora \
-  --config configs/anisora_v32_animeshooter_360p_lora.yaml \
-  --manifest /data/shasegawa/t2a/manifests/train.jsonl \
-  --validation-manifest /data/shasegawa/t2a/manifests/val.jsonl
-```
-
-For this requested start, use `configs/anisora_v32_animeshooter_360p_lora.yaml`. It expects an AniSora V3.2 `WanPipeline`-compatible Diffusers folder at `/data/shasegawa/t2a/models/Index-anisora-diffusers/V3.2`; the native downloaded V3.2 folder remains at `/data/shasegawa/t2a/models/Index-anisora/V3.2`.
-
-
-
-## Anita I2V LoRA Training
-
-This is the current image-to-video target path. AnitaDataset is used as image-sequence video data; the first frame is the conditioning image and the sampled 3-5 second sequence is the target video.
-
-The prepared manifests are:
+The default external layout is:
 
 ```text
-/data/shasegawa/t2a/manifests/anita_i2v_train.jsonl   # 317 sequences
-/data/shasegawa/t2a/manifests/anita_i2v_val50.jsonl   # 50 fixed first-frame/prompt pairs
+/data/shasegawa/t2a/
+├── models/
+├── datasets/anita/
+├── manifests/
+└── outputs/
 ```
 
-Train the high-noise I2V LoRA at 360p:
+## Prepare the three-phase dataset
+
+Download and extract AnitaDataset:
 
 ```bash
-accelerate launch --num_processes 2 -m text_to_anime.train_wan_i2v_lora \
-  --config configs/wan22_i2v_anita_360p_lora.yaml \
-  --manifest /data/shasegawa/t2a/manifests/anita_i2v_train.jsonl \
-  --validation-manifest /data/shasegawa/t2a/manifests/anita_i2v_val50.jsonl
+scripts/download_anita.sh
+unzip -q /data/shasegawa/t2a/datasets/anita/raw/Anita_Dataset.zip \
+  -d /data/shasegawa/t2a/datasets/anita
 ```
 
-The trainer enforces the requested constraints:
-
-- 360p default resolution, `640x360`.
-- 49 frames at 12 fps, about 4.1 seconds.
-- Image-to-video conditioning from frame 0.
-- VAE, text encoder, and image encoder if present are frozen.
-- Gradient checkpointing is enabled.
-- LoRA targets attention projections plus Wan block FFN projections for temporal dynamics: `to_q,to_k,to_v,to_out.0,ffn.net.0.proj,ffn.net.2`.
-- Validation uses 50 fixed first-frame/prompt pairs by default.
-
-Wan2.2 has high-noise and low-noise denoisers. Start with `train_stage: high`; if the high-stage adapter is useful, run a second LoRA with `--train-stage low` into a separate output directory.
-
-## Anita Production-Stage Wan2.2 LoRA
-
-For the production-pipeline experiment, the main all-in-one model is now a Wan2.2 I2V LoRA. The trainer keeps Wan2.2's VAE, text encoder, and image/video transformer backbone, and trains LoRA adapters on the Wan transformer. The three production tasks are expressed through the prompt plus Wan's latent video condition:
-
-- `line_art`: optional first-frame/reference condition to a line-art shot.
-- `character_color`: required line-art source shot to a character-color shot.
-- `compose_refine`: required character-color source shot to the final composited shot.
-
-Build an explicit production-shot manifest from the official Anita layout:
+Build the aligned production-shot manifest:
 
 ```bash
 t2a-anita-production manifest \
@@ -251,13 +193,10 @@ t2a-anita-production manifest \
   --output /data/shasegawa/t2a/manifests/anita_production.jsonl \
   --max-frames-per-shot 49 \
   --min-frames-per-shot 8 \
-  --shot-split-strategy semantic \
-  --semantic-split-search-radius 3
+  --shot-split-strategy semantic
 ```
 
-The manifest builder treats each Anita scene folder as the source scene and splits long scenes into contiguous semantic sub-shots before captioning. The default splitter scores adjacent-frame visual dynamics from downsampled structure and color features, then chooses high-change cut points that still respect the frame budget. If a sequence has no meaningful visual-change signal, it falls back to balanced frame-count chunks; pass `--shot-split-strategy frame_count` to force the old behavior.
-
-Caption the sub-shots first with OpenAI vision if you want stronger text conditioning. This uses the Responses API and reads `OPENAI_API_KEY` from the environment:
+Optionally add shot captions with a local VLM or the OpenAI Responses API:
 
 ```bash
 t2a-caption-anita-shots \
@@ -269,133 +208,115 @@ t2a-caption-anita-shots \
   --image-detail low
 ```
 
-For a local Hugging Face VLM instead, pass `--provider local --model-path /path/to/local-vlm`.
+Captioning sends representative frames to the selected provider. Use it only when the data
+policy permits. For local-only captioning, use `--provider local --model-path /path/to/vlm`.
 
-Train the Wan2.2 all-in-one production LoRA:
-
-```bash
-t2a-train-wan22-anita-production \
-  --config configs/wan22_anita_production_360p_lora.yaml \
-  --data /data/shasegawa/t2a/manifests/anita_production_captioned.jsonl
-```
-
-This trainer calls the Wan2.2 transformer directly and supports source-shot latent conditioning for stage 2 and stage 3 training. The stock `WanImageToVideoPipeline` inference path still only exposes first-frame/last-frame image conditioning, so use `t2a-render-wan22-anita-production` for source-shot conditioned inference.
-
-Render with the matching sampler. It reuses the trainer's prompts and conditioning, runs both Wan2.2 experts, and writes `condition | generated | target` comparison videos plus copy-detection metrics (`psnr_gen_vs_condition` against `psnr_condition_vs_target`):
+Recover the Phase 3 background controls:
 
 ```bash
-t2a-render-wan22-anita-production \
-  --data /data/shasegawa/t2a/manifests/anita_production_captioned.jsonl \
-  --output-dir /data/shasegawa/t2a/outputs/renders/overfit3 \
-  --high-lora /data/shasegawa/t2a/outputs/wan22-anita-production-overfit3-288x512-high \
-  --low-lora /data/shasegawa/t2a/outputs/wan22-anita-production-overfit3-288x512-low \
-  --scenes 119_a_part000,221_a_part000,204_a_part000 \
-  --high-device cuda:2 --low-device cuda:3
+t2a-anita-bg-plates
 ```
 
-Add `--chain` to feed each stage the previous generated stage instead of the ground-truth source shot. Defaults are 40 steps, CFG 3.5, and the checkpoint scheduler's flow shift (the same one training uses).
+This writes per-shot plates/backgrounds plus
+`/data/shasegawa/t2a/manifests/anita_background_plates.jsonl`.
 
-Overfit sanity check before a long run: train each expert on 3 shots, one GPU each, then render those shots with both LoRAs:
+## Train the pipeline-aware LoRA
 
-```bash
-CUDA_VISIBLE_DEVICES=2 NCCL_P2P_DISABLE=1 t2a-train-wan22-anita-production \
-  --config configs/wan22_anita_production_288p_overfit3_high.yaml
-CUDA_VISIBLE_DEVICES=3 NCCL_P2P_DISABLE=1 t2a-train-wan22-anita-production \
-  --config configs/wan22_anita_production_288p_overfit3_low.yaml
-```
-
-On this host, direct GPU-to-GPU copies silently return zeros even though CUDA reports peer access. The renderer routes cross-GPU tensors through host memory. Set `NCCL_P2P_DISABLE=1` for any multi-GPU training.
-
-Anita does not provide rich semantic captions, so text control is mostly task/style control unless you add stronger captions or external licensed text-video data.
-
-## Anita Production Stages with Wan VACE
-
-This path poses each production stage the way Wan VACE was pretrained: a control video plus a mask (1 = generate) and optional reference images. The LoRA then adapts an existing skill instead of learning a new conditioning scheme.
-
-| Task | Control video | Mask | Reference | Target |
-|---|---|---|---|---|
-| `inbetween` | line-art keyframes every `keyframe_stride` frames, grey elsewhere | 0 on keys | – | line-art sequence |
-| `character_color` | line-art video | 1 | one colored drawing from outside the clip | character colors |
-| `compose_refine` | character layer over the recovered background | 1 | clean plate (static shots) | final composition |
-
-Anita frame numbers are timing-sheet positions: drawings on 2s/3s skip numbers. Clips are rebuilt on the 24 fps timeline, holding each drawing, and sampled every `timeline_stride` frames (default 2, which gives 12 fps). Short shots use the longest valid Wan length (4k+1) instead of being stretched.
-
-Recover background plates first. Static shots get a clean median plate; moving shots get per-frame backgrounds:
-
-```bash
-t2a-anita-bg-plates   # writes /data/shasegawa/t2a/manifests/anita_background_plates.jsonl
-```
-
-Download VACE 1.3B for fast iteration, then train. Whole shots are held out for validation (`split.json`, `validation_log.jsonl` with fixed-noise, fixed-timestep losses):
+Download the iteration checkpoint:
 
 ```bash
 scripts/download_wan21_vace.sh 1.3B
-CUDA_VISIBLE_DEVICES=0,2,3 NCCL_P2P_DISABLE=1 accelerate launch --num_processes 3 --mixed_precision bf16 \
-  -m text_to_anime.train_wan_vace_anita --config configs/wan21_vace_1.3b_anita_480p_lora.yaml
 ```
 
-Render held-out shots with the stock `WanVACEPipeline`. The trainer builds its conditioning with the pipeline's own `prepare_video_latents`/`prepare_masks`, so inference sees exactly the training inputs:
+Launch the checked-in three-phase configuration:
 
 ```bash
-t2a-render-wan-vace-anita --config configs/wan21_vace_1.3b_anita_480p_lora.yaml \
+CUDA_VISIBLE_DEVICES=0,2,3 NCCL_P2P_DISABLE=1 \
+  accelerate launch --num_processes 3 --mixed_precision bf16 \
+  -m text_to_anime.train_wan_vace_anita \
+  --config configs/wan21_vace_1.3b_anita_480p_lora.yaml
+```
+
+The configuration trains a rank-32 LoRA across VACE attention and feed-forward projections.
+Task-balanced sampling prevents the more common in-betweening records from overwhelming
+color and composition. Changed regions receive higher flow-matching loss weight so the
+model is discouraged from copying its control video unchanged.
+
+The documented host has produced silent zero tensors during direct GPU peer copies. Keep
+`NCCL_P2P_DISABLE=1` for multi-GPU work until peer-transfer correctness is explicitly
+verified.
+
+## Render all three phases
+
+Render held-out records using the exact phase definitions from training:
+
+```bash
+t2a-render-wan-vace-anita \
+  --config configs/wan21_vace_1.3b_anita_480p_lora.yaml \
   --lora /data/shasegawa/t2a/outputs/wan21-vace-1.3b-anita-480p-r1 \
-  --output-dir /data/shasegawa/t2a/outputs/renders/vace-r1-val --device cuda:0
+  --output-dir /data/shasegawa/t2a/outputs/renders/vace-r1-val \
+  --device cuda:0
 ```
 
-Omit `--lora` to render the base VACE model as a baseline.
+Omit `--lora` to produce a base-model baseline. Restrict rendering with `--tasks`,
+`--scenes`, or `--max-samples`.
 
-## Image-To-Video
+The renderer writes:
 
-Image-to-video uses the supplied image as frame 0. For dataset workflows, extract the first frame from each training clip into `first_frame_path`:
+- the generated video for each phase;
+- control/generated/target comparison videos;
+- color-reference images when used;
+- per-shot JSON with prompts, frame IDs, and metrics;
+- `render_summary.json` for the complete render set.
 
-```bash
-t2a-extract-frames \
-  --manifest /data/shasegawa/t2a/manifests/animeshooter_clipped.jsonl \
-  --output-root /data/shasegawa/t2a/datasets/conditioning_frames/animeshooter \
-  --output-manifest /data/shasegawa/t2a/manifests/animeshooter_i2v.jsonl \
-  --frame-index 0
-```
+## Evaluation
 
-Download the Wan2.2 I2V Diffusers checkpoint for image-conditioned inference:
+Validation holds out whole shots and uses fixed windows, noise, and scheduler timesteps.
+Training writes per-phase losses to `validation_log.jsonl`.
 
-```bash
-scripts/download_wan22_i2v.sh
-```
+Render-time checks include:
 
-Run image-to-video inference:
+- generated-versus-target PSNR;
+- generated-versus-control PSNR to detect input copying;
+- saturation change, especially for color and composition;
+- temporal frame-difference motion;
+- synchronized visual review of all three phases.
 
-```bash
-t2a-infer-wan-i2v \
-  --pretrained-model-name-or-path /data/shasegawa/t2a/models/Wan2.2-I2V-A14B-Diffusers \
-  --image /data/shasegawa/t2a/datasets/conditioning_frames/animeshooter/example_first_frame.jpg \
-  --prompt "A schoolgirl in a classroom quietly begins speaking, with subtle blinking and gentle hair movement. Slow push-in from medium shot to close-up." \
-  --output /data/shasegawa/t2a/outputs/samples/i2v_sample.mp4 \
-  --height 360 \
-  --width 640 \
-  --num-frames 49 \
-  --fps 12
-```
+Review each phase independently before chaining it into the next. A visually plausible
+final video can hide a failed intermediate transformation.
 
-For first-last-frame models, pass `--last-image`; otherwise only the initial image is used.
+## Current limitations
 
-## Infer
+- Phase 1 currently assumes sparse line-art keys; pure text-to-line-art video is not yet the
+  primary training task.
+- Phase 2 is most reliable with a color reference.
+- Phase 3 is most reliable with recovered background context or a clean plate.
+- Prompt-only phase extrapolation can overexpose or oversaturate the result.
+- Anita captions improve content guidance, but Anita primarily teaches production-stage
+  transformations rather than open-domain semantics.
+- LoRA checkpoints do not currently include resumable optimizer/scheduler state.
+- Metrics are diagnostic; final animation quality still requires human review.
 
-```bash
-t2a-infer-wan \
-  --pretrained-model-name-or-path /data/shasegawa/t2a/models/Index-anisora-diffusers/V3.2 \
-  --lora-path /data/shasegawa/t2a/outputs/anisora-v32-animeshooter-vn-lora \
-  --prompt "A high-school girl in a navy uniform stands beside a classroom window at sunset. She lowers her eyes and quietly begins speaking while her hair moves slightly in the breeze. Slow push-in from medium shot to close-up." \
-  --output /data/shasegawa/t2a/outputs/samples/sample.mp4 \
-  --height 360 \
-  --width 640 \
-  --num-frames 49 \
-  --fps 12
-```
+## Repository map
 
-## Notes
+| Area | Files |
+|---|---|
+| Three-phase sample construction and training | `src/text_to_anime/train_wan_vace_anita.py` |
+| Three-phase rendering | `src/text_to_anime/render_wan_vace_anita.py` |
+| Anita stage alignment and shot splitting | `src/text_to_anime/anita_production.py` |
+| Shot captioning | `src/text_to_anime/caption_anita.py` |
+| Background recovery | `src/text_to_anime/anita_bg_plates.py` |
+| Active training configuration | `configs/wan21_vace_1.3b_anita_480p_lora.yaml` |
 
-- Do not deduplicate repeated frames inside a clip. Held frames are part of anime timing.
-- Split train and validation by title or source video, not by random clip.
-- Remove credits, subtitles, watermarks, split screens, and severe compression artifacts before training.
-- Keep commercial licensing separate from the research pipeline. web-scale anime datasets are usually not suitable for commercial deployment without rights clearance.
+## Documentation
 
+- [Detailed architecture](docs/architecture.md)
+- [Training methodology](docs/training-methodology.md)
+- [Takeover guide](docs/takeover/README.md)
+- [Operations runbook](docs/takeover/runbook.md)
+- [Current-state inventory](docs/takeover/current-state.md)
+
+## Data rights
+
+Keep dataset licensing and provenance separate from model quality. Do not use source
+material for commercial training or deployment unless the required rights are documented.
